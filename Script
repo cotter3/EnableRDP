@@ -1,0 +1,31 @@
+cls
+Write-Host '*************************************'
+Write-Host '*           Enable RDP              *'
+Write-Host '*************************************'
+Write-Host
+
+    $global:adminCreds = $host.ui.PromptForCredential("Need credentials", "Please enter your user name and password.", "", "")
+do
+{
+    $ComputerName = Read-Host -Prompt 'Computer Name?'
+    cd C:\PSTools\
+    .\psexec.exe \\$ComputerName netsh advfirewall set opmode disable
+    Wait 5
+    .\psexec.exe \\$ComputerName -s powershell.exe Enable-PSRemoting -Force
+    Invoke-command -ComputerName $ComputerName –ScriptBlock {Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 0} -credential $global:adminCreds
+    Invoke-command -ComputerName $ComputerName {Enable-NetFirewallRule -DisplayGroup "Remote Desktop"} -credential $global:adminCreds
+    Write-Host 'To disable RDP'
+    Pause 
+    Invoke-command -ComputerName $ComputerName –ScriptBlock {Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1} -credential $global:adminCreds
+    .\psexec.exe \\$ComputerName -s powershell Disable-PSRemoting -Force
+    Write-Host
+    #Write-Host "Press any key to continue ..."
+    # $x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes","Check another machine."
+    $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No","Quit"
+    $choice = [System.Management.Automation.Host.ChoiceDescription[]] @($yes,$no)
+    [int]$default = 0
+    $userchoice = $host.ui.PromptforChoice("","Check another machine???",$choice,$default)
+}
+
+    Until ($userchoice -eq 1)
